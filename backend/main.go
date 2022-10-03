@@ -19,7 +19,6 @@ const (
 func main() {
 
 	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request){
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		fmt.Fprintf(w, "pang")
 	})
 
@@ -37,7 +36,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		fmt.Fprintf(w, "pong")
 	})
 
