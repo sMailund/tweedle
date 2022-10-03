@@ -23,3 +23,10 @@ services:
       - backend
     ports:
       - "4000:4000"
+
+  frontend:
+    build: './frontend'
+    depends_on:
+      - backend
+    ports:
+      - 8080:8080
