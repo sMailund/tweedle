@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -42,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = db.Exec("CREATE TABLE if not exists words (id serial primary key, word text not null);")
+	_, err = db.Exec("CREATE TABLE if not exists words (id serial primary key, word text not null unique);")
 	if err != nil {
 		panic(err)
 	}
@@ -84,6 +85,13 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var content createTweet
 	err := json.NewDecoder(r.Body).Decode(&content)
 
+	splitted := strings.Split(content.Content, " ")
+
+	for _, word := range splitted {
+		insertWord, _ := db.Prepare("INSERT INTO words (word) values ($1) ON CONFLICT DO NOTHING")
+		_, err = insertWord.Exec(word)
+	}
+
 	stmt, err := db.Prepare("INSERT INTO tweets (content) values ($1) RETURNING id;")
 	if err != nil {
 		http.Error(w, "internal server error", 500)
@@ -94,6 +102,9 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 	}
+
+
+
 
 	w.Write([]byte(strconv.Itoa(id)))
 	return
