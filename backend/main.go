@@ -1,11 +1,12 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"database/sql"
-	_ "github.com/lib/pq"
 )
 
 const (
@@ -16,29 +17,47 @@ const (
 	dbname   = "postgres"
 )
 
+type createTweet struct {
+	content string
+}
+
 func main() {
 
-	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request){
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	defer db.Close()
+
+	_, err = db.Exec("CREATE TABLE tweets (id int primary key auto increment, content text);")
+
+	if err != nil {
+		panic(err)
+	}
+
+	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pang")
 	})
 
-	http.HandleFunc("/api/db", func(w http.ResponseWriter, r *http.Request){
-		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-		db, err := sql.Open("postgres", psqlInfo)
-		if err != nil {
-			panic(err)
+	http.HandleFunc("/api/tweet", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Bad request - Go away!", 405)
 		}
-		defer db.Close()
 
-		err = db.Ping()
+		var content createTweet
+		err := json.NewDecoder(r.Body).Decode(&content)
+
+		stmt, err := db.Prepare("INSERT INTO tweets (content) value (?)")
 		if err != nil {
-			panic(err)
+			http.Error(w, "internal server error", 500)
+			return
 		}
-		fmt.Fprintf(w, "pong")
+		_, err = stmt.Exec(content.content)
+		if err != nil {
+			http.Error(w, "internal server error", 500)
+			return
+		}
 	})
-
 
 	fmt.Print("Starting server\n")
 	log.Fatal(http.ListenAndServe(":8081", nil))
