@@ -40,26 +40,33 @@ func main() {
 	})
 
 	http.HandleFunc("/api/tweet", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Bad request - Go away!", 405)
-		}
-
-		var content createTweet
-		err := json.NewDecoder(r.Body).Decode(&content)
-
-		stmt, err := db.Prepare("INSERT INTO tweets (content) value (?)")
-		if err != nil {
-			http.Error(w, "internal server error", 500)
+		if r.Method == "POST" {
+			createNewTweet(w, r, db)
 			return
 		}
-		_, err = stmt.Exec(content.content)
-		if err != nil {
-			http.Error(w, "internal server error", 500)
-			return
-		}
+
+		http.Error(w, "Bad request - Go away!", 405)
+
 	})
 
 	fmt.Print("Starting server\n")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 
+}
+
+func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	var content createTweet
+	err := json.NewDecoder(r.Body).Decode(&content)
+
+	stmt, err := db.Prepare("INSERT INTO tweets (content) value (?)")
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
+	_, err = stmt.Exec(content.content)
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+	}
+
+	return
 }
