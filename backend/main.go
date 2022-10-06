@@ -21,6 +21,13 @@ type createTweet struct {
 	content string
 }
 
+type tweet struct {
+	id      int
+	content string
+}
+
+const tweetPrefix = "/api/tweet"
+
 func main() {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
@@ -29,7 +36,7 @@ func main() {
 	db, err := sql.Open("postgres", psqlInfo)
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE tweets (id int primary key auto increment, content text);")
+	_, err = db.Exec("CREATE TABLE if not exists tweets (id serial primary key, content text not null);")
 
 	if err != nil {
 		panic(err)
@@ -39,10 +46,19 @@ func main() {
 		fmt.Fprintf(w, "pang")
 	})
 
-	http.HandleFunc("/api/tweet", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "POST" {
-			createNewTweet(w, r, db)
-			return
+	http.HandleFunc(tweetPrefix, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			{
+				createNewTweet(w, r, db)
+				return
+			}
+		case http.MethodGet:
+			{
+				getTweet(w, r, db)
+				return
+			}
+
 		}
 
 		http.Error(w, "Bad request - Go away!", 405)
@@ -58,7 +74,7 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var content createTweet
 	err := json.NewDecoder(r.Body).Decode(&content)
 
-	stmt, err := db.Prepare("INSERT INTO tweets (content) value (?)")
+	stmt, err := db.Prepare("INSERT INTO tweets (content) values ($1);")
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
@@ -69,4 +85,26 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	return
+}
+
+func getTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	id := r.URL.Query().Get("id")
+
+	var t tweet
+	stmt, err := db.Prepare("SELECT id, content FROM tweets WHERE id = $1;")
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
+	stmt.QueryRow(id).Scan(&t.id, &t.content)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "no such element", 404)
+		}
+		http.Error(w, "internal server error", 500)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	output, err := json.Marshal(t)
+	w.Write(output)
 }
