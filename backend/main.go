@@ -19,12 +19,12 @@ const (
 )
 
 type createTweet struct {
-	content string
+	Content string `json:"content"`
 }
 
-type tweet struct {
-	id      int
-	content string
+type Tweet struct {
+	Id      int    `json:"id"`
+	Content string `json:"content"`
 }
 
 const tweetPrefix = "/api/tweet"
@@ -81,7 +81,7 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 	var id int
-	err = stmt.QueryRow(content.content).Scan(&id)
+	err = stmt.QueryRow(content.Content).Scan(&id)
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 	}
@@ -99,8 +99,8 @@ func getTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	var t tweet
-	err = stmt.QueryRow(id).Scan(&t.id, &t.content)
+	var t Tweet
+	err = stmt.QueryRow(id).Scan(&t.Id, &t.Content)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "no such element", 404)
