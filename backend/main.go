@@ -93,14 +93,14 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 func getTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	id := r.URL.Query().Get("id")
 
-	var t tweet
 	stmt, err := db.Prepare("SELECT id, content FROM tweets WHERE id = $1;")
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
 	}
 
-	stmt.QueryRow(id).Scan(&t.id, &t.content)
+	var t tweet
+	err = stmt.QueryRow(id).Scan(&t.id, &t.content)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "no such element", 404)
