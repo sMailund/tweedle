@@ -38,7 +38,16 @@ func main() {
 	defer db.Close()
 
 	_, err = db.Exec("CREATE TABLE if not exists tweets (id serial primary key, content text not null);")
+	if err != nil {
+		panic(err)
+	}
 
+	_, err = db.Exec("CREATE TABLE if not exists words (id serial primary key, word text not null);")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec("CREATE TABLE if not exists word_to_tweet (id serial primary key, word_id int not null, tweet_id int not null);")
 	if err != nil {
 		panic(err)
 	}
