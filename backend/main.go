@@ -29,6 +29,7 @@ type Tweet struct {
 }
 
 const tweetPrefix = "/api/tweet"
+const relevantPrefix = "/api/relevant"
 
 func main() {
 
@@ -76,9 +77,45 @@ func main() {
 
 	})
 
+	http.HandleFunc(relevantPrefix, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			{
+				getRelevant(w, r, db)
+				return
+			}
+
+		}
+
+		http.Error(w, "Bad request - Go away!", 405)
+
+	})
+
 	fmt.Print("Starting server\n")
 	log.Fatal(http.ListenAndServe(":8081", nil))
 
+}
+
+func getRelevant(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	id := r.URL.Query().Get("id")
+	query, _ := db.Prepare("SELECT tweet_id from word_to_tweet where word_id in (SELECT word_id from word_to_tweet where tweet_id = $1) LIMIT 3;")
+	rows, err := query.Query(id)
+	if err != nil {
+		http.Error(w, "internal server error", 500)
+		return
+	}
+
+	var relevantIds []int
+
+	for rows.Next() {
+		var foundId int
+		rows.Scan(&foundId)
+		relevantIds = append(relevantIds, foundId)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	output, err := json.Marshal(relevantIds)
+	w.Write(output)
 }
 
 func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
