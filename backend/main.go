@@ -103,8 +103,10 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		http.Error(w, "internal server error", 500)
 	}
 
-
-
+	for _, word := range splitted {
+		insertWord, _ := db.Prepare("INSERT INTO word_to_tweet (word_id, tweet_id) values ((select id from words where word = $1), $2);")
+		_, err = insertWord.Exec(word, id)
+	}
 
 	w.Write([]byte(strconv.Itoa(id)))
 	return
