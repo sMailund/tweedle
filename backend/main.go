@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -74,16 +75,18 @@ func createNewTweet(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var content createTweet
 	err := json.NewDecoder(r.Body).Decode(&content)
 
-	stmt, err := db.Prepare("INSERT INTO tweets (content) values ($1);")
+	stmt, err := db.Prepare("INSERT INTO tweets (content) values ($1) RETURNING id;")
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 		return
 	}
-	_, err = stmt.Exec(content.content)
+	var id int
+	err = stmt.QueryRow(content.content).Scan(&id)
 	if err != nil {
 		http.Error(w, "internal server error", 500)
 	}
 
+	w.Write([]byte(strconv.Itoa(id)))
 	return
 }
 
